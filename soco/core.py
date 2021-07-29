@@ -112,13 +112,13 @@ def only_on_master(function):
 
     @wraps(function)
     def inner_function(self, *args, **kwargs):
-        """Master checking inner function."""
-        if not self.is_coordinator:
-            message = (
-                'The method or property "{}" can only be called/used '
-                "on the coordinator in a group".format(function.__name__)
-            )
-            raise SoCoSlaveException(message)
+        # """Master checking inner function."""
+        # if not self.is_coordinator:
+        #     message = (
+        #         'The method or property "{}" can only be called/used '
+        #         "on the coordinator in a group".format(function.__name__)
+        #     )
+        #     raise SoCoSlaveException(message)
         return function(self, *args, **kwargs)
 
     return inner_function
@@ -586,7 +586,7 @@ class SoCo(_SocoSingletonBase):
         return int(response["NewVolume"])
 
     @only_on_master
-    def play_from_queue(self, index, start=True):
+    def play_from_queue(self, index, uid, start=True):
         """Play a track from the queue by index.
 
         The index number is required as an argument, where the first index
@@ -598,11 +598,11 @@ class SoCo(_SocoSingletonBase):
         """
         # Grab the speaker's information if we haven't already since we'll need
         # it in the next step.
-        if not self.speaker_info:
-            self.get_speaker_info()
+        # if not self.speaker_info:
+        #     self.get_speaker_info()
 
         # first, set the queue itself as the source URI
-        uri = "x-rincon-queue:{}#0".format(self.uid)
+        uri = "x-rincon-queue:{}#0".format(uid)
         self.avTransport.SetAVTransportURI(
             [("InstanceID", 0), ("CurrentURI", uri), ("CurrentURIMetaData", "")]
         )
@@ -1198,6 +1198,10 @@ class SoCo(_SocoSingletonBase):
         # Maintain a private cache. If the zgt has not changed, there is no
         # need to repeat all the XML parsing. In addition, switch on network
         # caching for a short interval (5 secs).
+
+        # This must not be called as in large systems the speakers will respond
+        # with a 500 error... so make sure we can't
+        raise Exception("Attempt to call GetZoneGroupState()")
         zgs = self.zoneGroupTopology.GetZoneGroupState(cache=self._zgs_cache)[
             "ZoneGroupState"
         ]
@@ -1250,47 +1254,6 @@ class SoCo(_SocoSingletonBase):
                 # of groups
             self._groups.add(ZoneGroup(group_uid, group_coordinator, members))
 
-    @property
-    def all_groups(self):
-        """set of :class:`soco.groups.ZoneGroup`: All available groups."""
-        self._parse_zone_group_state()
-        return self._groups.copy()
-
-    @property
-    def group(self):
-        """:class:`soco.groups.ZoneGroup`: The Zone Group of which this device
-        is a member.
-
-        None if this zone is a slave in a stereo pair.
-        """
-
-        for group in self.all_groups:
-            if self in group:
-                return group
-        return None
-
-        # To get the group directly from the network, try the code below
-        # though it is probably slower than that above
-        # current_group_id = self.zoneGroupTopology.GetZoneGroupAttributes()[
-        #     'CurrentZoneGroupID']
-        # if current_group_id:
-        #     for group in self.all_groups:
-        #         if group.uid == current_group_id:
-        #             return group
-        # else:
-        #     return None
-
-    @property
-    def all_zones(self):
-        """set of :class:`soco.groups.ZoneGroup`: All available zones."""
-        self._parse_zone_group_state()
-        return self._all_zones.copy()
-
-    @property
-    def visible_zones(self):
-        """set of :class:`soco.groups.ZoneGroup`: All visible zones."""
-        self._parse_zone_group_state()
-        return self._visible_zones.copy()
 
     def partymode(self):
         """Put all the speakers in the network in the same group, a.k.a Party

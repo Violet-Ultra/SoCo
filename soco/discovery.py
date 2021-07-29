@@ -63,7 +63,7 @@ def discover(
         set: a set of `SoCo` instances, one for each zone found, or else
         `None`.
     """
-
+    
     def create_socket(interface_addr):
         """A helper function for creating a socket for discovery purposes.
 
@@ -133,7 +133,14 @@ def discover(
         # is no monotonic timer available before Python 3.3.
         t1 = time.time()
         if t1 - t0 > timeout:
-            return None
+            if allow_network_scan:
+                _LOG.info("Falling back to network scan discovery")
+                return scan_network(
+                    include_invisible=include_invisible,
+                    **network_scan_kwargs,
+                )
+            else:
+                return None
 
         # The timeout of the select call is set to be no greater than
         # 100ms, so as not to exceed (too much) the required timeout
@@ -170,16 +177,22 @@ def discover(
                     # Player's ability to find the others, than to wait for
                     # query responses from them ourselves.
                     zone = config.SOCO_CLASS(addr[0])
+
+                    # We've found one speaker, just return that in the set
+                    zones = set()
+                    zones.add(zone)
+                    return zones
+
                     if include_invisible:
                         return zone.all_zones
                     else:
                         return zone.visible_zones
-        elif allow_network_scan:
-            _LOG.debug("Falling back to network scan discovery")
-            return scan_network(
-                include_invisible=include_invisible,
-                **network_scan_kwargs,
-            )
+        # elif allow_network_scan:
+        #     _LOG.debug("Falling back to network scan discovery")
+        #     return scan_network(
+        #         include_invisible=include_invisible,
+        #         **network_scan_kwargs,
+        #     )
 
 
 def any_soco(allow_network_scan=False, **network_scan_kwargs):
@@ -208,8 +221,12 @@ def any_soco(allow_network_scan=False, **network_scan_kwargs):
         # as long as it is visible (i.e. not a bridge etc). Otherwise,
         # perform discovery (again, excluding invisibles) and return one of
         # those
+        # device = next(
+        #     d for d in cls._instances[cls._class_group].values() if d.is_visible
+        # )
+        devices = cls._instances[cls._class_group].values()
         device = next(
-            d for d in cls._instances[cls._class_group].values() if d.is_visible
+            iter(devices)
         )
     except (KeyError, StopIteration):
         devices = discover(allow_network_scan=allow_network_scan, **network_scan_kwargs)
@@ -359,12 +376,13 @@ def scan_network(
     # Collect SoCo instances
     zones = set()
     for ip_address in sonos_ip_addresses:
-        if include_invisible:
-            for zone in config.SOCO_CLASS(ip_address).all_zones:
-                zones.add(zone)
-        else:
-            for zone in config.SOCO_CLASS(ip_address).visible_zones:
-                zones.add(zone)
+        # if include_invisible:
+        #     for zone in config.SOCO_CLASS(ip_address).all_zones:
+        #         zones.add(zone)
+        # else:
+        #     for zone in config.SOCO_CLASS(ip_address).visible_zones:
+        #         zones.add(zone)
+        zones.add(config.SOCO_CLASS(ip_address))
         # Stop after first zone unless we want exhaustively to find
         # all zones across all households
         if not multi_household:
@@ -683,7 +701,7 @@ def _is_sonos(ip_address):
 
     try:
         # Try getting a device property
-        _ = config.SOCO_CLASS(ip_address).is_visible
+        _ = config.SOCO_CLASS(ip_address).mute
         return True
     # The exception is unimportant
     # pylint: disable=bare-except
