@@ -231,18 +231,26 @@ class EventNotifyHandlerBase:
         subscription = self.subscriptions_map.get_subscription(sid)
         # It might have been removed by another thread
         if subscription:
-            service = subscription.service
-            self.log_event(seq, service.service_id, timestamp)
-            log.debug("Event content: %s", content)
-            variables = parse_event_xml(content)
-            # Build the Event object
-            event = Event(sid, seq, service, timestamp, variables)
-            # pass the event details on to the service so it can update
-            # its cache.
-            # pylint: disable=protected-access
-            service._update_cache_on_event(event)
-            # Pass the event on for handling
-            subscription.send_event(event)
+            try:
+                service = subscription.service
+                self.log_event(seq, service.service_id, timestamp)
+                log.debug("Event content: %s", content)
+                variables = parse_event_xml(content)
+                # Build the Event object
+                log.debug("Building event object")
+                event = Event(sid, seq, service, timestamp, variables)
+                # pass the event details on to the service so it can update
+                # its cache.
+                # pylint: disable=protected-access
+                log.debug("Update service cache")
+                service._update_cache_on_event(event)
+                # Pass the event on for handling
+                log.debug("Sending event")
+                subscription.send_event(event)
+                log.debug("Event sent")
+            except Exception as ex:
+                log.exception("Exception whilst dealing with event received")
+                raise ex
         else:
             log.info("No service registered for %s", sid)
 
@@ -591,7 +599,12 @@ class SubscriptionBase:
         else:
             callback = None
         if callback and hasattr(callback, "__call__"):
-            callback(event)
+            log.debug("Calling event handler callback")
+            try:
+                callback(event)
+            except Exception as ex:
+                log.exception("Exception during event handler")
+                raise ex
         else:
             try:
                 self.events.put(event)

@@ -76,7 +76,7 @@ class Account:
         device = soco or discovery.any_soco()
         log.debug("Fetching account data from %s", device)
         settings_url = "http://{}:1400/status/accounts".format(device.ip_address)
-        result = requests.get(settings_url).content
+        result = requests.get(settings_url, timeout=10).content
         log.debug("Account data: %s", result)
         return result
 
