@@ -13,6 +13,7 @@ import logging
 import socket
 import time
 import threading
+from types import SimpleNamespace
 import weakref
 from queue import Queue
 
@@ -246,11 +247,14 @@ class EventNotifyHandlerBase:
                 service._update_cache_on_event(event)
                 # Pass the event on for handling
                 log.debug("Sending event")
+            #    if service.service_id == "AVTransport":
+            #        raise Exception("TESTING")
                 subscription.send_event(event)
                 log.debug("Event sent")
             except Exception as ex:
                 log.exception("Exception whilst dealing with event received")
-                raise ex
+                subscription.event_handling_exception = \
+                        SimpleNamespace(content=content, exception=ex)
         else:
             log.info("No service registered for %s", sid)
 
