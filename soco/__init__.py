@@ -10,7 +10,7 @@
 import logging
 
 from .core import SoCo
-from .discovery import discover
+from .discovery import discover, remove_instance
 from .exceptions import SoCoException, UnknownSoCoException
 
 # Will be parsed by setup.py to determine package metadata

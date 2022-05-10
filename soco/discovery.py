@@ -235,6 +235,21 @@ def any_soco(allow_network_scan=False, **network_scan_kwargs):
     return device
 
 
+def remove_instance(soco):
+    _LOG.info(f"Removing instance {soco}")
+    try:
+        cls = config.SOCO_CLASS
+        devices_dict: dict = cls._instances[cls._class_group]
+        instance_key = None
+        for key, value in devices_dict.items():
+            if value is soco:
+                instance_key = key
+                break
+        devices_dict.pop(instance_key)
+    except:
+        _LOG.exception(f"Failed to remove instance key {instance_key}")
+
+
 def by_name(name, allow_network_scan=False, **network_scan_kwargs):
     """Return a device by name.
 
