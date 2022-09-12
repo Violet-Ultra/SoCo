@@ -107,13 +107,21 @@ def attempt_datastructure_upgrade(didl_item):
                 )
             return didl_item
 
+        # upgraded_item = cls(
+        #     item_id=item_id,
+        #     desc=desc_from_uri(resource.uri),
+        #     resources=didl_item.resources,
+        #     uri=uri,
+        #     metadata_dict=metadata,
+        # )
         upgraded_item = cls(
             item_id=item_id,
-            desc=desc_from_uri(resource.uri),
+            desc="RINCON_AssociatedZPUDN",
             resources=didl_item.resources,
             uri=uri,
             metadata_dict=metadata,
         )
+
         _LOG.debug("Item %s upgraded to %s", didl_item, upgraded_item)
         return upgraded_item
 
